@@ -1,7 +1,6 @@
 int line_width[12] = {2,2,2,2,2,2,2,2,2,2,2,2};
 int line_style[12] = {1,1,1,1,1,1,1,1,1,1,1,1};                                                                   
-//int marker_style[12] = {21,43,22,29,33,34,39,41,43,45,47,23};
-int marker_style[12] = {8,22,34,47,33,22,34,39,41,43,45,23};
+int marker_style[12] = {21,43,22,29,33,34,39,41,43,45,47,23};
 int line_color[9] = {kBlue,kRed,kGreen+2,kViolet+2,kCyan+2,kYellow+1,kGray+2,kMagenta,kBlue+2};
 int line_color1[9]= {kBlue,kGreen+2,kGray+1,kViolet+2,kGreen-2,kYellow+1,kGray+2,kMagenta,kBlue+2};
 int line_color2[9] = {kGreen+2,kBlue,kViolet,kGray,kViolet+2,kGreen-2,kYellow+1,kGray+2,kMagenta};
@@ -114,25 +113,17 @@ void generate_1Dplot(vector<TH1F*> hist, char const *tag_name="", char const *xl
     legend->SetLineColor(kWhite);
     legend->SetNColumns(2);
     legend->SetHeader(title);
-	double MaxY=0;
-    for(int i = 0; i < (int)hist.size(); i++) {
-	 if(normalize)   hist.at(i)->Scale(1.0 / hist.at(i)->Integral());
-        hist.at(i)->Rebin(rebin);
-        hist.at(i)->GetXaxis()->SetRangeUser(xmin,xmax);
-        if(hist.at(i)->GetMaximum() > MaxY){MaxY=hist.at(i)->GetMaximum();}
-                                              }
-vector<vector<TLatex>> latexVec(hist.size(),vector<TLatex>(3));
-vector<TF1*> Fit_func(hist.size());
- for(int i = 0; i < (int)hist.size(); i++) {
 
-        if(normalize) {
-            //hist.at(i)->Scale(1.0 / hist.at(i)->Integral());
+    for(int i = 0; i < (int)hist.size(); i++) {
+        if(normalize && hist.at(i)->Integral() > 0) {
+            hist.at(i)->Scale(1.0 / hist.at(i)->Integral());
             hist.at(i)->GetYaxis()->SetTitle("Normalized");
         } else {
             hist.at(i)->GetYaxis()->SetTitle("Entries");
         }
 
-        //hist.at(i)->Rebin(rebin);
+        hist.at(i)->SetLineWidth(2);
+        hist.at(i)->Rebin(rebin);
         //hist.at(i)->GetXaxis()->SetRangeUser(xmin, xmax);
         //hist.at(i)->Smooth(1);
 
@@ -153,84 +144,44 @@ vector<TF1*> Fit_func(hist.size());
 
         double fitMin = hist.at(i)->GetXaxis()->GetBinCenter(binLeft);
         double fitMax = hist.at(i)->GetXaxis()->GetBinCenter(binRight);
-        fitMin=xmin;fitMax=xmax;
-cout <<"Here2"<<endl;
+        fitMin=0.96;fitMax=1.03;
 
-        /*TF1* fitFunc = new TF1("CruijffFit", Cruijff, fitMin, fitMax, 6);
+        TF1* fitFunc = new TF1("CruijffFit", Cruijff, fitMin, fitMax, 6);
         fitFunc->SetParameters(peakValue, 0.01, 0.01, 0.1, 0.1, hist.at(i)->GetMaximum());
         fitFunc->SetParLimits(1, 0.00001, 0.1);
-        fitFunc->SetParLimits(2, 0.00001, 0.1);*/
-	Fit_func[i] = new TF1("CruijffFit", Cruijff, fitMin, fitMax, 6);
-        Fit_func[i]->SetParameters(peakValue, 0.01, 0.01, 0.1, 0.1, hist.at(i)->GetMaximum());
-        Fit_func[i]->SetParLimits(1, 0.00001, 0.1);
-        Fit_func[i]->SetParLimits(2, 0.00001, 0.1);
+        fitFunc->SetParLimits(2, 0.00001, 0.1);
 
-	
-	double old_mean=hist.at(i)->GetMean();
-        double old_sigma = hist.at(i)->GetRMS();
-        for (int iter = 0; iter < 400; ++iter) {
-            hist.at(i)->Fit(Fit_func[i], "RE");
-            double mean = Fit_func[i]->GetParameter(0);
-            double sigmaL = Fit_func[i]->GetParameter(1);
-            double sigmaR = Fit_func[i]->GetParameter(2);
-            double sigma = (sigmaL + sigmaR)/2;
-            if ((abs(old_mean-mean)/mean) < 0.0002 && abs(old_sigma-sigma)/sigma < 0.0002) break;
-            old_sigma=sigma;
-            old_mean=mean;
-cout <<"Here3"<<"\t"<<iter<<endl;
-		}
+        for (int iter = 0; iter < 1; ++iter) {
+            hist.at(i)->Fit(fitFunc, "R");
+            double mean = fitFunc->GetParameter(0);
+            double sigmaL = fitFunc->GetParameter(1);
+            double sigmaR = fitFunc->GetParameter(2);
+            //fitMin = mean - 2 * sigmaL;
+            //fitMax = mean + 2 * sigmaR;
+            
+        }
 
-        hist.at(i)->GetXaxis()->SetRangeUser(fitMin, fitMax);
-        //hist.at(i)->GetXaxis()->SetRangeUser(0.96, 1.04);
-        //fitFunc->SetRange(0.96, 1.04);
-        hist.at(i)->GetYaxis()->SetRangeUser(0, 1.5*MaxY);
+        //hist.at(i)->GetXaxis()->SetRangeUser(fitMin, fitMax);
+        hist.at(i)->GetXaxis()->SetRangeUser(0.96, 1.04);
+        fitFunc->SetRange(0.96, 1.04);
+        hist.at(i)->GetYaxis()->SetRangeUser(0, 1.4 * hist.at(i)->GetMaximum());
         hist.at(i)->SetMarkerColor(line_color[i]);
-	hist.at(i)->SetLineColor(line_color[i]);
         hist.at(i)->SetMarkerStyle(marker_style[i]);
-        hist.at(i)->SetLineWidth(1);
-	hist.at(i)->SetMarkerSize(1);
-        Fit_func[i]->SetLineColor(line_color[i]);
-        //hist.at(i)->Draw(i == 0 ? "" : "SAME");
-        //fitFunc->Draw("SAME");
+        fitFunc->SetLineColor(line_color[i]);
+        hist.at(i)->Draw(i == 0 ? "" : "SAME");
+        fitFunc->Draw("SAME");
         
-       /* TLatex latex;
+        TLatex latex;
         latex.SetNDC();
         latex.SetTextColor(line_color[i]);
         latex.SetTextSize(0.035);
         latex.DrawLatex(0.8, 0.9, Form("#mu = %.4f", fitFunc->GetParameter(0)));
         latex.DrawLatex(0.8, 0.85, Form("#sigma_{L} = %.4f", fitFunc->GetParameter(1)));
         latex.DrawLatex(0.8, 0.8, Form("#sigma_{R} = %.4f", fitFunc->GetParameter(2)));
-        legend->AddEntry(hist.at(i), legend_texts[i].c_str(), "p");*/
-	TLatex latex;
-        latex.SetNDC();
-        latex.SetTextColor(line_color[i]);
-        latex.SetTextSize(0.028);
-        latex.SetText(0.8, 0.9-(i*0.13), Form("#mu = %.4f", Fit_func[i]->GetParameter(0)));
-        latexVec[i].push_back(latex);
-        latex.SetText(0.8, 0.87-(i*0.13), Form("#sigma_{L} = %.4f", Fit_func[i]->GetParameter(1)));
-        latexVec[i].push_back(latex);
-        latex.SetText(0.8, 0.84-(i*0.13), Form("#sigma_{R} = %.4f", Fit_func[i]->GetParameter(2)));
-        latexVec[i].push_back(latex);
-        latex.SetText(0.8, 0.8-(i*0.13), Form("#chi^{2}/NDF = %.4f", Fit_func[i]->GetChisquare()/Fit_func[i]->GetNDF()));
-        latexVec[i].push_back(latex);
         legend->AddEntry(hist.at(i), legend_texts[i].c_str(), "p");
-
-        cout<<"Legend entry " <<i<<endl;
     }
-    for(int i = 0; i < (int)latexVec.size(); i++) {
-    for(int j = 0; j < (int)latexVec[i].size(); j++) {
-        latexVec[i][j].Draw();  // Draw each TLatex object
-    }
-        hist.at(i)->Draw("same PE");
-        Fit_func[i]->Draw("same");
-        cout<<"Chi2"<<"\t"<< Fit_func[i]->GetChisquare() << "\t"<< "NDF : "<<Fit_func[i]->GetNDF()<<endl;
-}
-
-    
 
     legend->Draw();
-    gPad->Modified();
-    gPad->Update();
 
     if (save_canvas) {
         canvas_n1->SaveAs(Form("%s.png", tag_name));
@@ -240,7 +191,7 @@ cout <<"Here3"<<"\t"<<iter<<endl;
 
 
 struct MixedData {
-     vector<string> str1;
+     string str1;
      string str4;
      string str2;
      int intData;
@@ -265,7 +216,7 @@ void FitFunc(){
   int n_files=1;
  
     //f[0] = new TFile("EGM_DRN_plots.root");
-    f[0] = new TFile("plot.root");
+    f[0] = new TFile("Plot.root");
     
     vector<string> filetag=  {""};
     //vector<vector<string>> varName;
@@ -275,8 +226,8 @@ void FitFunc(){
     vector<string> norm;
 MixedData varName[]= {  // {{Array of names of plots},Title of plot, xlabel, rebin, ymin, ymax , xmin, xmax, {legend}}
 
-{{"DRN_ErecoByEgen","BDT_ErecoByEgen"},"ECorrByEGen","E_{Pred}/E_{Gen}",100,0,0.000001,0.95,1.05,{"DRN","BDT"}},
-//{"DRN_ErecoByEgen","ECorrByEGen","E_{Pred}/E_{Gen}",200,0,1,0,2,{"DRN"}},
+{"BDT_ErecoByEgen","ECorrByEGen","E_{Corrected}/E_{Gen}",200,0,1,0,2,{"BDT"}},
+{"DRN_ErecoByEgen","ECorrByEGen","E_{Corrected}/E_{Gen}",200,0,1,0,2,{"DRN"}},
 };
  vector<string> GEN = {"Angle between gen photons"};
 
@@ -299,18 +250,17 @@ norm ={""};
         double xmax = varName[i].double4;
         vector<string> legend_texts = varName[i].str3;
         string Name = varName[i].str4;
-        vector<string> VarName = varName[i].str1;
+        string VarName = varName[i].str1;
         cout << VarName.size() << endl;
         vector<TH1F*> hist_list;
-	cout << "XLABEL "<<xLabel<<endl;
-        for (int j=0; j<VarName.size();j++){
+       // for (int j=0; j<VarName.size();j++){
            
-	  sprintf(hist_name,"%s",VarName[j].c_str());
+	  sprintf(hist_name,"%s",VarName.c_str());
 	  cout<<hist_name<<"\t"<<i<<"\t"<<i_file<<"\t"<<f[i_file]->GetName()<<endl;
           
 	  TH1F* h_resp2 = (TH1F*)f[i_file]->Get(hist_name); // SR
 	  h_resp2->GetXaxis()->SetTitle(xLabel.c_str());
-	  cout<<"resp2 "<<h_resp2->Integral()<<"\t"<<rebin<<"\t"<<xmin<<"\t"<<xmax<<endl;
+	  //cout<<"resp2 "<<h_resp2->Integral()<<"\t"<<rebin<<"\t"<<xmin<<"\t"<<xmax<<endl;
 	  
 	  //h_resp2->Rebin(rebin);
 	 
@@ -320,7 +270,7 @@ norm ={""};
 	  
 	  
 	  hist_list.push_back(h_resp2); 
-       } 
+        
       string  Savename;
     int gen = count(GEN.begin(),GEN.end(),Name);
     int LOG = count(loghist.begin(), loghist.end(),Name);
@@ -329,7 +279,7 @@ norm ={""};
     else {Savename = "RECO_";}
          string Savename2=Savename+to_string(1000 + i)+"_" +Name + "_Fit";
 
-generate_1Dplot(hist_list,Savename2.c_str(),xLabel.c_str(),"Normalized frequency",rebin,ymin,ymax,xmin,xmax,leg_head,true,false,false,true,filetag[i_file].c_str(),legend_texts);
+generate_1Dplot(hist_list,Savename2.c_str(),xLabel.c_str(),"Normalized frequency",rebin,ymin,ymax,xmin,xmax,leg_head,false,false,false,true,filetag[i_file].c_str(),legend_texts);
 if(LOG && NORM){
          string Savename1=Savename +to_string(1000 + i) +"_"+Name + "_Fit";
 generate_1Dplot(hist_list,Savename1.c_str(),xLabel.c_str(),"Normalized frequency",rebin,ymin,ymax,xmin,xmax,leg_head,true,true,false,true,filetag[i_file].c_str(),legend_texts);
