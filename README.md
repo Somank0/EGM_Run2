@@ -9,6 +9,9 @@
 
 3. copy the ***patElectronDRNCorrector_cfi.py*** and place it in the *PhysicaTools/PatAlgis/python/slimming* 
 
+> [!TIP]
+> For the studies, **CMSSW_13_3_3** was used, but any CMSSW_version >= 13_3_X should work.
+
 ## Inference script
 
 The executable *DRN_job_withFileCheck.sh* is used to run the inference. It calls the file DRN_reg_final_cfg.py 
